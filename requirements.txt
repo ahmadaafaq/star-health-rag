@@ -1,0 +1,9 @@
+numpy
+python-dotenv
+sentence-transformers
+PyPDF2
+groq
+fastapi
+uvicorn[standard]
+supabase
+twilio
