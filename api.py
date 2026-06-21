@@ -19,7 +19,7 @@ from datetime import datetime, timezone, timedelta
 from twilio.request_validator import RequestValidator
 
 # Import the RAG ask function and greeting helpers
-from rag import ask, normalize_greeting, _RAG_GREETINGS
+from rag import ask, normalize_greeting, _RAG_GREETINGS, recommend_policy_json
 
 # Import database storage and normalisation functions
 from conversation_store import (
@@ -68,6 +68,7 @@ POLICY_PDF_MAP = {
     "star premier": f"{_SUPABASE_STORAGE}/star-premier.pdf",
     "young star": f"{_SUPABASE_STORAGE}/young-star.pdf",
     "super star": f"{_SUPABASE_STORAGE}/super-star.pdf",
+    "star comprehensive": f"{_SUPABASE_STORAGE}/star-comprehensive.pdf",
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -238,6 +239,7 @@ def resolve_policy_pdf(policy_name: Optional[str], plan_id: Optional[str]) -> tu
         ("premier", "star premier", "Star Health Premier"),
         ("young star", "young star", "Young Star Insurance"),
         ("super star", "super star", "Super Star"),
+        ("comprehensive", "star comprehensive", "Star Comprehensive Insurance Policy"),
     ]
 
     for keyword, map_key, title in mapping:
@@ -538,6 +540,20 @@ async def chat_endpoint(req: ChatRequest):
 
     # Return structure expected by frontend server: {"message": reply}
     return {"message": reply}
+
+@app.post("/api/recommend_plan")
+async def recommend_plan_endpoint(request: Request):
+    """
+    Called by the React frontend to get a structured RAG-based policy recommendation JSON.
+    """
+    try:
+        profile = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+        
+    logger.info(f"Generating policy recommendation for profile: {profile}")
+    result = await asyncio.to_thread(recommend_policy_json, profile)
+    return result
 
 @app.post("/api/update-score-from-call")
 async def update_score_from_call_endpoint(req: CallScoreRequest):

@@ -44,16 +44,25 @@ PLAN_PDF_MAP = {
     "star-premier":         "Policy_Star_Health_Premier",
     "super-star":           "Policy_Super_Star_V_3_80e5dd8988.pdf",
     "young-star":           "Policy_Young_Star_Insurance_Policy_V_12_59f47a25f5.pdf",
+    "star-comprehensive":   "Brochure_Star_Comprehensive_Insurance_Policy_V_15_Web_633bcfcaaf.pdf",
 }
 
+BROCHURES_DIR = Path(__file__).parent / "star_health_docs" / "brochure"
+
 def find_pdf(stem_or_file: str) -> Path | None:
-    """Find a PDF in the policies directory matching the given stem."""
-    # If it's a full filename, use it directly
+    """Find a PDF in the policies or brochure directory matching the given stem."""
+    # Check policies dir first (full filename or prefix)
     direct = POLICIES_DIR / stem_or_file
     if direct.exists():
         return direct
-    # Otherwise search by prefix
     for f in sorted(POLICIES_DIR.glob("*.pdf")):
+        if f.name.startswith(stem_or_file) and "(1)" not in f.name:
+            return f
+    # Fall back to brochure dir
+    direct_b = BROCHURES_DIR / stem_or_file
+    if direct_b.exists():
+        return direct_b
+    for f in sorted(BROCHURES_DIR.glob("*.pdf")):
         if f.name.startswith(stem_or_file) and "(1)" not in f.name:
             return f
     return None
