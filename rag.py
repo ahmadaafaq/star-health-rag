@@ -647,8 +647,18 @@ def recommend_policy_json(profile: dict) -> dict:
     context = "\n\n".join(context_parts)
     
     # 2. Call LLM with JSON output format
-    prompt = f"""You are Star Health AI, an expert premium insurance advisor. 
-Analyze the user profile and the provided policy context. Recommend exactly ONE best health insurance policy.
+    prompt = f"""You are Star Health AI, an expert premium insurance advisor representing LeadX. 
+Analyze the user profile and the provided policy context. Recommend exactly ONE best health insurance policy based on the following playbook:
+
+=== ADVISOR PLAYBOOK / RULES FOR PLAN MATCHING ===
+1. **Young Star (`young-star`)**: Recommend this for young individuals, young couples, or young families (primary age <= 35) without senior parents included in the plan.
+2. **Star Premier (`star-premier`)**: Recommend this if the primary insured is 50+ years of age, or if senior parents are being included.
+3. **Star Assure (`star-assure`)**: Recommend this for mid-aged individuals, couples, or families (primary age 36-49) seeking premium comprehensive coverage with high sum insured limits and unlimited automatic restorations.
+4. **Star Comprehensive (`star-comprehensive`)**: Recommend this if the user explicitly mentions pregnancy/maternity plans, or wants outpatient (OPD) consultation and pharmacy benefits covered.
+5. **Family Health Optima (`family-health-optima`)**: Recommend this primarily for families wanting to cover multiple generations or both sets of parents under a single floater plan, or families with moderate budgets.
+6. **Arogya Sanjeevani (`arogya-sanjeevani`)**: Recommend this for users with a 'low' or 'modest' budget focus looking for a standard basic plan (note: has 5% co-pay).
+7. **Medi Classic (`medi-classic`)**: Recommend this for individuals wanting a basic, clean, classic individual policy with no co-pay.
+
 Return your answer STRICTLY as a raw JSON object. Do not wrap it in markdown block quotes.
 
 The JSON MUST have the exact following keys:
@@ -662,12 +672,6 @@ The JSON MUST have the exact following keys:
 
 USER PROFILE:
 {json.dumps(profile, indent=2)}
-
-KEY PARENT DETAILS (important for plan selection):
-- Primary's own parents covered: {profile.get('myParentsCount', 0) or 0}
-- Spouse's parents / parent-in-laws covered: {profile.get('spouseParentsCount', 0) or 0}
-- Total parents in plan: {(profile.get('myParentsCount') or 0) + (profile.get('spouseParentsCount') or 0)}
-Note: Star Health Family Health Optima supports BOTH sets of parents in a single plan.
 
 POLICY CONTEXT:
 {POLICY_SUMMARIES}

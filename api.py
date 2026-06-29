@@ -25,6 +25,7 @@ from rag import ask, normalize_greeting, _RAG_GREETINGS, recommend_policy_json
 from conversation_store import (
     record_message,
     get_conversation_history,
+    get_conversation_history_by_lead_id,
     normalise_phone,
     phone_variants,
     _get_supabase,
@@ -179,6 +180,9 @@ async def _send_twilio_reply(to: str, body: str, media_url: Optional[str] = None
         if norm_to != norm_test:
             logger.info(f"Test mode redirect: original recipient={to}, redirecting to {test_number}")
             target_to = test_number
+
+    # Normalize to ensure E.164 country code format (+91...) for Twilio
+    target_to = normalise_phone(target_to)
 
     # Ensure phone has "whatsapp:" prefix
     if not target_to.startswith("whatsapp:"):
@@ -412,7 +416,7 @@ async def send_welcome(req: WelcomeRequest):
     # Simple guard: check if a welcome message was already sent to this phone in the last 10 minutes
     try:
         db = _get_supabase()
-        ten_mins_ago = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat(timespec="seconds")
+        ten_mins_ago = (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat(timespec="seconds")
         
         # Query messages table
         res = db.table("messages").select("id").eq("phone", norm_phone).eq("message_type", "welcome").gte("created_at", ten_mins_ago).limit(1).execute()
@@ -498,6 +502,19 @@ async def get_conversation(phone: str, limit: int = Query(20, ge=1)):
         return {"status": "success", "history": history}
     except Exception as e:
         logger.error(f"Error fetching conversation history for {phone}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/conversation/lead/{lead_id}")
+async def get_conversation_by_lead_id(lead_id: str, limit: int = Query(20, ge=1)):
+    """
+    Get full conversation history for a specific lead ID.
+    """
+    try:
+        history = await get_conversation_history_by_lead_id(lead_id, limit=limit)
+        return {"status": "success", "history": history}
+    except Exception as e:
+        logger.error(f"Error fetching conversation history for lead_id {lead_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/chat")

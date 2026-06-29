@@ -195,7 +195,7 @@ async def record_message(
         return False
 
 
-_EXCLUDED_TYPES = {"welcome", "system_notification"}
+_EXCLUDED_TYPES = {"system_notification"}
 _EXCLUDED_BODY_PREFIXES = ("[DEMO]", "New Lead!", "[NEW LEAD ALERT]")
 
 
@@ -252,3 +252,22 @@ async def _lookup_lead_by_phone(phone: str) -> Optional[dict]:
     except Exception as exc:
         logger.warning(f"lead_lookup_failed for phone {phone}: {exc}")
         return None
+
+
+async def get_conversation_history_by_lead_id(lead_id: str, limit: int = 20) -> list[dict]:
+    try:
+        def _fetch() -> list[dict]:
+            db     = _get_supabase()
+            result = db.table("messages").select(
+                "direction, body, channel, twilio_sid, created_at, message_type"
+            ).eq("lead_id", lead_id).order("created_at", desc=True).limit(limit * 3).execute()
+            rows     = result.data or []
+            filtered = [r for r in rows if _is_conversation_message(r)]
+            filtered.reverse()
+            return filtered[-limit:]
+
+        db_history = await asyncio.to_thread(_fetch)
+        return db_history
+    except Exception as exc:
+        logger.warning(f"history_db_failed for lead_id {lead_id}: {exc}")
+        return []
