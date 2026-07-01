@@ -572,6 +572,35 @@ async def recommend_plan_endpoint(request: Request):
     result = await asyncio.to_thread(recommend_policy_json, profile)
     return result
 
+class PolicySearchRequest(BaseModel):
+    query: str
+    limit: int = 3
+
+
+@app.post("/api/search")
+async def policy_search_endpoint(req: PolicySearchRequest):
+    """
+    Semantic search over policy_chunks for the LiveKit voice agent.
+    Called by tools/policy_rag.py when the agent needs specific policy details.
+    Uses the same pgvector search as the main RAG pipeline.
+    """
+    from rag import search as rag_search
+    try:
+        results = await asyncio.to_thread(rag_search, req.query, req.limit)
+        # Normalize output: each result should have a 'content' field
+        normalized = []
+        for r in results:
+            normalized.append({
+                "content": r.get("content") or r.get("text") or str(r),
+                "policy": r.get("policy_name") or r.get("source") or "",
+                "score": r.get("score") or r.get("similarity") or 0,
+            })
+        return {"results": normalized, "query": req.query}
+    except Exception as e:
+        logger.error(f"Policy search error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/update-score-from-call")
 async def update_score_from_call_endpoint(req: CallScoreRequest):
     """
