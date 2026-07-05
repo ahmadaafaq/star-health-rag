@@ -480,10 +480,10 @@ Use bullet points or numbered lists for clarity. Be friendly and helpful.
 Do NOT include any PDF links or download URLs in your response."""
 
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama3-8b-8192",  # 8B is free-tier and sufficient for listing policies
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
-            max_tokens=1500,
+            max_tokens=800,
         )
         reply_text = response.choices[0].message.content
 
@@ -576,10 +576,10 @@ CUSTOMER QUESTION: {question}
 ANSWER:"""
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama3-8b-8192",  # 8B is free-tier and sufficient for policy Q&A
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
-        max_tokens=1500,
+        max_tokens=800,
     )
     reply_text = response.choices[0].message.content
 
@@ -651,8 +651,8 @@ def recommend_policy_json(profile: dict) -> dict:
 Analyze the user profile and the provided policy context. Recommend exactly ONE best health insurance policy based on the following playbook:
 
 === ADVISOR PLAYBOOK / RULES FOR PLAN MATCHING ===
-1. **Young Star (`young-star`)**: Recommend this for young individuals, young couples, or young families (primary age <= 35) without senior parents included in the plan.
-2. **Star Premier (`star-premier`)**: Recommend this if the primary insured is 50+ years of age, or if senior parents are being included.
+1. **Young Star (`young-star`)**: You MUST recommend this if the primary age is <= 35 and senior parents are NOT covered. This is the absolute priority for young individuals, young couples, or young families. Do NOT recommend 'star-assure' in this case.
+2. **Star Premier (`star-premier`)**: You MUST recommend this if the primary age is >= 50, or if senior parents are being covered.
 3. **Star Assure (`star-assure`)**: Recommend this for mid-aged individuals, couples, or families (primary age 36-49) seeking premium comprehensive coverage with high sum insured limits and unlimited automatic restorations.
 4. **Star Comprehensive (`star-comprehensive`)**: Recommend this if the user explicitly mentions pregnancy/maternity plans, or wants outpatient (OPD) consultation and pharmacy benefits covered.
 5. **Family Health Optima (`family-health-optima`)**: Recommend this primarily for families wanting to cover multiple generations or both sets of parents under a single floater plan, or families with moderate budgets.
@@ -681,10 +681,10 @@ POLICY CONTEXT:
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.3-70b-versatile",  # Keep 70B for plan matching — needs strict rule-following
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
-            max_tokens=1000,
+            max_tokens=600,  # Reduced from 1000 — JSON output doesn't need more
             response_format={"type": "json_object"}
         )
         reply_text = response.choices[0].message.content
