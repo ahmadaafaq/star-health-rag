@@ -47,7 +47,7 @@ Return ONLY valid JSON, no markdown.
 """
     try:
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=os.getenv("GROQ_FAST_MODEL", "openai/gpt-oss-20b"),
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
             max_tokens=200,

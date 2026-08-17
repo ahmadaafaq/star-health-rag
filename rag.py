@@ -646,6 +646,19 @@ def recommend_policy_json(profile: dict) -> dict:
 
     context = "\n\n".join(context_parts)
     
+    # Authoritative base premiums — single source of truth.
+    # These override whatever the LLM returned so the value is ALWAYS consistent.
+    PLAN_BASE_PREMIUMS = {
+        "young-star":          699,
+        "arogya-sanjeevani":   799,
+        "family-health-optima": 1199,
+        "medi-classic":        899,
+        "star-comprehensive":  1099,
+        "star-assure":         1499,
+        "star-premier":        1899,
+        "super-star":          2299,
+    }
+    
     # 2. Call LLM with JSON output format
     prompt = f"""You are Star Health AI, an expert premium insurance advisor representing LeadX. 
 Analyze the user profile and the provided policy context. Recommend exactly ONE best health insurance policy based on the following playbook:
@@ -681,14 +694,19 @@ POLICY CONTEXT:
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",  # Keep 70B for plan matching — needs strict rule-following
+            model=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"),  # Migrated from deprecated llama-3.3-70b-versatile
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
             max_tokens=600,  # Reduced from 1000 — JSON output doesn't need more
             response_format={"type": "json_object"}
         )
         reply_text = response.choices[0].message.content
-        return json.loads(reply_text)
+        result = json.loads(reply_text)
+        # Override LLM-guessed premium with authoritative value from lookup table
+        plan_id = result.get("recommendedPlanId", "")
+        if plan_id in PLAN_BASE_PREMIUMS:
+            result["monthlyPremium"] = PLAN_BASE_PREMIUMS[plan_id]
+        return result
     except Exception as e:
         print(f"JSON Recommendation error: {e}")
         # Fallback payload
@@ -698,9 +716,10 @@ POLICY CONTEXT:
             "whyExplanation": "Star Health Assure provides comprehensive coverage tailored perfectly for your profile based on our standard evaluation.",
             "savingsEstimate": "₹2,00,000",
             "cashlessCount": "14,000+",
-            "monthlyPremium": 1500,
+            "monthlyPremium": PLAN_BASE_PREMIUMS["star-assure"],
             "highlightedBenefits": ["Wide coverage limit", "Cashless claims in 2 hours", "No capping on room rent", "Automatic restoration"]
         }
+
 
 
 # ── Quick test ────────────────────────────────────────────────────────────────
